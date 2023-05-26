@@ -22,7 +22,6 @@ INSTALLED_APPS = [
     'djoser',
     'api',
     'posts',
-    'django_filters',
 ]
 
 MIDDLEWARE = [
