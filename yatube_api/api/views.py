@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from rest_framework import mixins
 from rest_framework import filters
 from rest_framework import viewsets
 from rest_framework.exceptions import NotFound, ValidationError
@@ -43,28 +44,23 @@ class GroupViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = GroupSerializer
 
 
-class FollowViewSet(viewsets.ModelViewSet):
+class CreateListFollowViewSet(mixins.CreateModelMixin,
+                              mixins.ListModelMixin,
+                              viewsets.GenericViewSet):
+    pass
+
+
+class FollowViewSet(CreateListFollowViewSet):
     serializer_class = FollowSerializer
     permission_classes = (FollowPermission,)
     filter_backends = (filters.SearchFilter, )
     filterset_fields = ['following']
     search_fields = ('following__username',)
 
-    def perform_create(self, serializer):
-        following_username = self.request.data.get('following')
-        user = self.request.user
-        if following_username is None:
-            raise ValidationError('Необходимо указать имя пользователя.')
-        if following_username == user.username:
-            raise ValidationError('Нельзя подписаться на самого себя.')
-        try:
-            following = User.objects.get(username=following_username)
-        except User.DoesNotExist:
-            raise ValidationError(
-                'Пользователь с указанным именем не существует.')
-        if Follow.objects.filter(user=user).filter(following=following):
-            raise ValidationError('Вы уже подписаны на этого автора.')
-        serializer.save(user=user, following=following)
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
 
     def get_queryset(self):
         user = self.request.user

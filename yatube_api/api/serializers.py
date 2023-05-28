@@ -1,10 +1,11 @@
 import base64
 from django.core.files.base import ContentFile
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 from rest_framework.relations import SlugRelatedField
 
 
-from posts.models import Comment, Group, Post, Follow
+from posts.models import Comment, Group, Post, Follow, User
 
 
 class Base64ImageField(serializers.ImageField):
@@ -51,3 +52,20 @@ class FollowSerializer(serializers.ModelSerializer):
     class Meta:
         fields = ['user', 'following', ]
         model = Follow
+
+    def create(self, validated_data):
+        following_username = validated_data.get('following')
+        user = self.context['request'].user
+        if following_username is None:
+            raise ValidationError('Необходимо указать имя пользователя.')
+        if following_username == user.username:
+            raise ValidationError('Нельзя подписаться на самого себя.')
+        try:
+            following = User.objects.get(username=following_username)
+        except User.DoesNotExist:
+            raise ValidationError(
+                'Пользователь с указанным именем не существует.')
+        if Follow.objects.filter(user=user).filter(following=following):
+            raise ValidationError('Вы уже подписаны на этого автора.')
+        validated_data.update(user=user, following=following)
+        return super().create(validated_data)
