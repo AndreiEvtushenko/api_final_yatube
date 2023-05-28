@@ -54,7 +54,7 @@ class FollowSerializer(serializers.ModelSerializer):
         model = Follow
 
     def create(self, validated_data):
-        following_username = validated_data.get('following')
+        following_username = self.initial_data.get('following')
         user = self.context['request'].user
         if following_username is None:
             raise ValidationError('Необходимо указать имя пользователя.')
